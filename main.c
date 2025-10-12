@@ -1,172 +1,337 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
+#include <stdbool.h>
 
-// Сортировка пузырьком
-void bubbleSort(int arr[], int n) {
-    for (int i = 0; i < n - 1; i++) {
-        for (int j = 0; j < n - i - 1; j++) {
-            if (arr[j] > arr[j + 1]) {
-                int temp = arr[j];
-                arr[j] = arr[j + 1];
-                arr[j + 1] = temp;
-            }
-        }
+typedef struct {
+    int d;
+    int m;
+    int y;
+} Date;
+
+bool leap(int y) {
+    return (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0);
+}
+
+int days_in_m(int m, int y) {
+    switch (m) {
+        case 1: case 3: case 5: case 7: case 8: case 10: case 12: return 31;
+        case 4: case 6: case 9: case 11: return 30;
+        case 2: return leap(y) ? 29 : 28;
+        default: return 0;
     }
 }
 
-// Сортировка выбором
-void selectionSort(int arr[], int n) {
-    for (int i = 0; i < n - 1; i++) {
-        int min_idx = i;
-        for (int j = i + 1; j < n; j++) {
-            if (arr[j] < arr[min_idx]) {
-                min_idx = j;
+bool valid(int d, int m, int y) {
+    if (y < 1 || y > 9999) return false;
+    if (m < 1 || m > 12) return false;
+    if (d < 1 || d > days_in_m(m, y)) return false;
+    return true;
+}
+
+long long to_concat(int d, int m, int y) {
+    return (long long)y * 10000 + m * 100 + d;
+}
+
+long long to_days(int d, int m, int y) {
+    long long t = 0;
+    for (int i = 1; i < y; i++) t += leap(i) ? 366 : 365;
+    for (int i = 1; i < m; i++) t += days_in_m(i, y);
+    return t + d;
+}
+
+void gen_rand_date(int *d, int *m, int *y) {
+    do {
+        *y = rand() % 9999 + 1;
+        *m = rand() % 12 + 1;
+        *d = rand() % days_in_m(*m, *y) + 1;
+    } while (!valid(*d, *m, *y));
+}
+
+void gen_file(const char *fn, int cnt) {
+    FILE *f = fopen(fn, "w");
+    if (!f) return;
+
+    srand(time(NULL));
+    for (int i = 0; i < cnt; i++) {
+        int d, m, y;
+        gen_rand_date(&d, &m, &y);
+        fprintf(f, "%d.%d.%d\n", d, m, y);
+    }
+    fclose(f);
+    printf("Сгенерировано %d дат в %s\n", cnt, fn);
+}
+
+Date* read_struct(const char *fn, int *cnt) {
+    FILE *f = fopen(fn, "r");
+    if (!f) return NULL;
+
+    *cnt = 0;
+    char buf[20];
+    while (fgets(buf, sizeof(buf), f)) (*cnt)++;
+    rewind(f);
+
+    Date *ds = malloc(*cnt * sizeof(Date));
+    for (int i = 0; i < *cnt; i++) {
+        fscanf(f, "%d.%d.%d\n", &ds[i].d, &ds[i].m, &ds[i].y);
+    }
+    fclose(f);
+    return ds;
+}
+
+long long* read_concat(const char *fn, int *cnt) {
+    FILE *f = fopen(fn, "r");
+    if (!f) return NULL;
+
+    *cnt = 0;
+    char buf[20];
+    while (fgets(buf, sizeof(buf), f)) (*cnt)++;
+    rewind(f);
+
+    long long *ds = malloc(*cnt * sizeof(long long));
+    for (int i = 0; i < *cnt; i++) {
+        int d, m, y;
+        fscanf(f, "%d.%d.%d\n", &d, &m, &y);
+        ds[i] = to_concat(d, m, y);
+    }
+    fclose(f);
+    return ds;
+}
+
+long long* read_days(const char *fn, int *cnt) {
+    FILE *f = fopen(fn, "r");
+    if (!f) return NULL;
+
+    *cnt = 0;
+    char buf[20];
+    while (fgets(buf, sizeof(buf), f)) (*cnt)++;
+    rewind(f);
+
+    long long *ds = malloc(*cnt * sizeof(long long));
+    for (int i = 0; i < *cnt; i++) {
+        int d, m, y;
+        fscanf(f, "%d.%d.%d\n", &d, &m, &y);
+        ds[i] = to_days(d, m, y);
+    }
+    fclose(f);
+    return ds;
+}
+
+int cmp_struct(const void *a, const void *b) {
+    const Date *d1 = (const Date*)a;
+    const Date *d2 = (const Date*)b;
+    if (d1->y != d2->y) return d1->y - d2->y;
+    if (d1->m != d2->m) return d1->m - d2->m;
+    return d1->d - d2->d;
+}
+
+int cmp_concat(const void *a, const void *b) {
+    long long d1 = *(const long long*)a;
+    long long d2 = *(const long long*)b;
+    if (d1 < d2) return -1;
+    if (d1 > d2) return 1;
+    return 0;
+}
+
+int cmp_days(const void *a, const void *b) {
+    long long d1 = *(const long long*)a;
+    long long d2 = *(const long long*)b;
+    if (d1 < d2) return -1;
+    if (d1 > d2) return 1;
+    return 0;
+}
+
+void bubble_s(Date a[], int n) {
+    for (int i = 0; i < n-1; i++)
+        for (int j = 0; j < n-i-1; j++)
+            if (cmp_struct(&a[j], &a[j+1]) > 0) {
+                Date t = a[j];
+                a[j] = a[j+1];
+                a[j+1] = t;
             }
-        }
-        int temp = arr[i];
-        arr[i] = arr[min_idx];
-        arr[min_idx] = temp;
+}
+
+void bubble_l(long long a[], int n, int (*cmp)(const void*, const void*)) {
+    for (int i = 0; i < n-1; i++)
+        for (int j = 0; j < n-i-1; j++)
+            if (cmp(&a[j], &a[j+1]) > 0) {
+                long long t = a[j];
+                a[j] = a[j+1];
+                a[j+1] = t;
+            }
+}
+
+void select_s(Date a[], int n) {
+    for (int i = 0; i < n-1; i++) {
+        int mi = i;
+        for (int j = i+1; j < n; j++)
+            if (cmp_struct(&a[j], &a[mi]) < 0) mi = j;
+        Date t = a[i];
+        a[i] = a[mi];
+        a[mi] = t;
     }
 }
 
-// Быстрая сортировка (третья сортировка)
-void quickSort(int arr[], int low, int high) {
-    if (low < high) {
-        int pivot = arr[high];
-        int i = (low - 1);
+void select_l(long long a[], int n, int (*cmp)(const void*, const void*)) {
+    for (int i = 0; i < n-1; i++) {
+        int mi = i;
+        for (int j = i+1; j < n; j++)
+            if (cmp(&a[j], &a[mi]) < 0) mi = j;
+        long long t = a[i];
+        a[i] = a[mi];
+        a[mi] = t;
+    }
+}
 
-        for (int j = low; j <= high - 1; j++) {
-            if (arr[j] < pivot) {
+void quick_s(Date a[], int l, int h) {
+    if (l < h) {
+        Date p = a[h];
+        int i = l-1;
+        for (int j = l; j <= h-1; j++) {
+            if (cmp_struct(&a[j], &p) < 0) {
                 i++;
-                int temp = arr[i];
-                arr[i] = arr[j];
-                arr[j] = temp;
+                Date t = a[i];
+                a[i] = a[j];
+                a[j] = t;
             }
         }
-        int temp = arr[i + 1];
-        arr[i + 1] = arr[high];
-        arr[high] = temp;
-
-        int pi = i + 1;
-        quickSort(arr, low, pi - 1);
-        quickSort(arr, pi + 1, high);
+        Date t = a[i+1];
+        a[i+1] = a[h];
+        a[h] = t;
+        int pi = i+1;
+        quick_s(a, l, pi-1);
+        quick_s(a, pi+1, h);
     }
 }
 
-// Вспомогательная функция для быстрой сортировки
-void quickSortWrapper(int arr[], int n) {
-    quickSort(arr, 0, n - 1);
+void quick_s_wrap(Date a[], int n) {
+    quick_s(a, 0, n-1);
 }
 
-// Функция для генерации случайного массива
-void generateRandomArray(int arr[], int n) {
-    for (int i = 0; i < n; i++) {
-        arr[i] = (rand()*rand()) % 1000;
-    }
-}
-
-// Функция для копирования массива
-void copyArray(int source[], int destination[], int n) {
-    for (int i = 0; i < n; i++) {
-        destination[i] = source[i];
-    }
-}
-
-// Функция для проверки отсортированности массива
-int isSorted(int arr[], int n) {
-    for (int i = 0; i < n - 1; i++) {
-        if (arr[i] > arr[i + 1]) {
-            return 0;
+void quick_l(long long a[], int l, int h, int (*cmp)(const void*, const void*)) {
+    if (l < h) {
+        long long p = a[h];
+        int i = l-1;
+        for (int j = l; j <= h-1; j++) {
+            if (cmp(&a[j], &p) < 0) {
+                i++;
+                long long t = a[i];
+                a[i] = a[j];
+                a[j] = t;
+            }
         }
+        long long t = a[i+1];
+        a[i+1] = a[h];
+        a[h] = t;
+        int pi = i+1;
+        quick_l(a, l, pi-1, cmp);
+        quick_l(a, pi+1, h, cmp);
     }
-    return 1;
 }
 
-// Функция для измерения времени выполнения сортировки
-double measureSortTime(void (*sortFunc)(int[], int), int arr[], int n) {
-    clock_t start, end;
+void quick_c_wrap(long long a[], int n) {
+    quick_l(a, 0, n-1, cmp_concat);
+}
 
-    start = clock();
-    sortFunc(arr, n);
-    end = clock();
+void quick_d_wrap(long long a[], int n) {
+    quick_l(a, 0, n-1, cmp_days);
+}
 
-    return ((double)(end - start)) / CLOCKS_PER_SEC;
+double measure_time(void (*f)(void*, int), void *d, int n) {
+    clock_t s = clock();
+    f(d, n);
+    clock_t e = clock();
+    return ((double)(e - s)) / CLOCKS_PER_SEC;
+}
+
+void bubble_s_wrap(void *d, int n) { bubble_s((Date*)d, n); }
+void bubble_c_wrap(void *d, int n) { bubble_l((long long*)d, n, cmp_concat); }
+void bubble_d_wrap(void *d, int n) { bubble_l((long long*)d, n, cmp_days); }
+void select_s_wrap(void *d, int n) { select_s((Date*)d, n); }
+void select_c_wrap(void *d, int n) { select_l((long long*)d, n, cmp_concat); }
+void select_d_wrap(void *d, int n) { select_l((long long*)d, n, cmp_days); }
+
+void write_file(const char *fn, Date *ds, int n) {
+    FILE *f = fopen(fn, "w");
+    if (!f) return;
+    for (int i = 0; i < n; i++) fprintf(f, "%d.%d.%d\n", ds[i].d, ds[i].m, ds[i].y);
+    fclose(f);
+}
+
+bool sorted(Date *ds, int n) {
+    for (int i = 0; i < n-1; i++)
+        if (cmp_struct(&ds[i], &ds[i+1]) > 0) return false;
+    return true;
 }
 
 int main() {
- SetConsoleOutputCP(65001);
- SetConsoleCP(65001);
-    srand(time(NULL));
+    SetConsoleOutputCP(65001);
+    SetConsoleCP(65001);
 
-    const int sizes[] = {100, 1000, 5000};
-    const int num_sizes = sizeof(sizes) / sizeof(sizes[0]);
+    const char *in = "dates.txt";
+    const char *out = "sorted.txt";
+    int n = 5000;
 
-    printf("Сравнение времени выполнения кодировок:\n");
-    printf("Размер | Пузырьковая | Выбором     | Быстрая\n");
-    printf("-------|-------------|-------------|----------\n");
+    printf("=== Генерация и сортировка дат ===\n");
+    gen_file(in, n);
 
-    for (int i = 0; i < num_sizes; i++) {
-        int n = sizes[i];
+    int cnt;
 
-        // Генерируем исходный массив
-        int *original = (int*)malloc(n * sizeof(int));
-        generateRandomArray(original, n);
+    printf("\n=== Сравнение производительности ===\n");
 
-        // Создаем копии для каждой сортировки
-        int *arr1 = (int*)malloc(n * sizeof(int));
-        int *arr2 = (int*)malloc(n * sizeof(int));
-        int *arr3 = (int*)malloc(n * sizeof(int));
+    printf("\n--- Struct ---\n");
+    Date *ds = read_struct(in, &cnt);
+    Date *d1 = malloc(cnt * sizeof(Date));
+    Date *d2 = malloc(cnt * sizeof(Date));
+    memcpy(d1, ds, cnt * sizeof(Date));
+    memcpy(d2, ds, cnt * sizeof(Date));
 
-        copyArray(original, arr1, n);
-        copyArray(original, arr2, n);
-        copyArray(original, arr3, n);
+    double t1 = measure_time(bubble_s_wrap, ds, cnt);
+    double t2 = measure_time(select_s_wrap, d1, cnt);
+    double t3 = measure_time((void(*)(void*,int))quick_s_wrap, d2, cnt);
 
-        // Измеряем время для каждой сортировки
-        double time1 = measureSortTime(bubbleSort, arr1, n);
-        double time2 = measureSortTime(selectionSort, arr2, n);
-        double time3 = measureSortTime(quickSortWrapper, arr3, n);
+    printf("Bubble: %.6f\n", t1);
+    printf("Select: %.6f\n", t2);
+    printf("Quick:  %.6f\n", t3);
+    printf("Sorted: %s\n", sorted(ds, cnt) ? "yes" : "no");
 
-        // Проверяем, что массивы отсортированы
-        if (!isSorted(arr1, n) || !isSorted(arr2, n) || !isSorted(arr3, n)) {
-            printf("Ошибка: массивы не отсортированы правильно!\n");
-        }
+    printf("\n--- Concat ---\n");
+    long long *dc = read_concat(in, &cnt);
+    long long *c1 = malloc(cnt * sizeof(long long));
+    long long *c2 = malloc(cnt * sizeof(long long));
+    memcpy(c1, dc, cnt * sizeof(long long));
+    memcpy(c2, dc, cnt * sizeof(long long));
 
-        // Выводим результаты
-        printf("%6d | %10.6f | %10.6f | %10.6f\n",
-               n, time1, time2, time3);
+    t1 = measure_time(bubble_c_wrap, dc, cnt);
+    t2 = measure_time(select_c_wrap, c1, cnt);
+    t3 = measure_time((void(*)(void*,int))quick_c_wrap, c2, cnt);
 
-        // Освобождаем память
-        free(original);
-        free(arr1);
-        free(arr2);
-        free(arr3);
-    }
+    printf("Bubble: %.6f\n", t1);
+    printf("Select: %.6f\n", t2);
+    printf("Quick:  %.6f\n", t3);
 
-    // Дополнительный тест с большим массивом
-    printf("\nТест с большим массивом (10000 элементов):\n");
-    int n = 10000;
-    int *original = (int*)malloc(n * sizeof(int));
-    generateRandomArray(original, n);
+    printf("\n--- Days ---\n");
+    long long *dd = read_days(in, &cnt);
+    long long *dd1 = malloc(cnt * sizeof(long long));
+    long long *dd2 = malloc(cnt * sizeof(long long));
+    memcpy(dd1, dd, cnt * sizeof(long long));
+    memcpy(dd2, dd, cnt * sizeof(long long));
 
-    int *arr1 = (int*)malloc(n * sizeof(int));
-    int *arr2 = (int*)malloc(n * sizeof(int));
-    int *arr3 = (int*)malloc(n * sizeof(int));
+    t1 = measure_time(bubble_d_wrap, dd, cnt);
+    t2 = measure_time(select_d_wrap, dd1, cnt);
+    t3 = measure_time((void(*)(void*,int))quick_d_wrap, dd2, cnt);
 
-    copyArray(original, arr1, n);
-    copyArray(original, arr2, n);
-    copyArray(original, arr3, n);
+    printf("Bubble: %.6f\n", t1);
+    printf("Select: %.6f\n", t2);
+    printf("Quick:  %.6f\n", t3);
 
-    // Пропускаем пузырьковую для большого массива (слишком медленно)
-    double time1 = measureSortTime(bubbleSort, arr1, n);
-    double time2 = measureSortTime(selectionSort, arr2, n);
-    double time3 = measureSortTime(quickSortWrapper, arr3, n);
+    write_file(out, ds, cnt);
+    printf("\nОтсортированные данные записаны в %s\n", out);
 
-    printf("Пузырьком: %.6f сек, Выбором: %.6f сек, Быстрая: %.6f сек\n", time1, time2, time3);
-
-    free(original);
-    free(arr2);
-    free(arr3);
+    free(ds); free(d1); free(d2);
+    free(dc); free(c1); free(c2);
+    free(dd); free(dd1); free(dd2);
 
     return 0;
 }
