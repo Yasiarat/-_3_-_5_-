@@ -4,16 +4,19 @@
 #include <time.h>
 #include <stdbool.h>
 
+// Структура для хранения даты
 typedef struct {
     int d;
     int m;
     int y;
 } Date;
 
+// Проверка на високосный год
 bool leap(int y) {
     return (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0);
 }
 
+// Количество дней в месяце
 int days_in_m(int m, int y) {
     switch (m) {
         case 1: case 3: case 5: case 7: case 8: case 10: case 12: return 31;
@@ -23,6 +26,7 @@ int days_in_m(int m, int y) {
     }
 }
 
+// Проверка корректности даты
 bool valid(int d, int m, int y) {
     if (y < 1 || y > 9999) return false;
     if (m < 1 || m > 12) return false;
@@ -30,17 +34,24 @@ bool valid(int d, int m, int y) {
     return true;
 }
 
+// Преобразование в число ггггммдд
 long long to_concat(int d, int m, int y) {
     return (long long)y * 10000 + m * 100 + d;
 }
 
+// Преобразование в количество дней от 1.1.1
 long long to_days(int d, int m, int y) {
     long long t = 0;
-    for (int i = 1; i < y; i++) t += leap(i) ? 366 : 365;
-    for (int i = 1; i < m; i++) t += days_in_m(i, y);
-    return t + d;
+    for (int i = 1; i < y; i++) {
+        t += leap(i) ? 366 : 365;
+    }
+    for (int i = 1; i < m; i++) {
+        t += days_in_m(i, y);
+    }
+    return t + d - 1; // -1 потому что 1.1.1 = 0 дней
 }
 
+// Генерация случайной даты
 void gen_rand_date(int *d, int *m, int *y) {
     do {
         *y = rand() % 9999 + 1;
@@ -49,6 +60,7 @@ void gen_rand_date(int *d, int *m, int *y) {
     } while (!valid(*d, *m, *y));
 }
 
+// Генерация файла с датами
 void gen_file(const char *fn, int cnt) {
     FILE *f = fopen(fn, "w");
     if (!f) return;
@@ -60,64 +72,46 @@ void gen_file(const char *fn, int cnt) {
         fprintf(f, "%d.%d.%d\n", d, m, y);
     }
     fclose(f);
-    printf("Сгенерировано %d дат в %s\n", cnt, fn);
 }
 
-Date* read_struct(const char *fn, int *cnt) {
+// Чтение дат в структуры
+void read_struct(const char *fn, Date *ds, int cnt) {
     FILE *f = fopen(fn, "r");
-    if (!f) return NULL;
+    if (!f) return;
 
-    *cnt = 0;
-    char buf[20];
-    while (fgets(buf, sizeof(buf), f)) (*cnt)++;
-    rewind(f);
-
-    Date *ds = malloc(*cnt * sizeof(Date));
-    for (int i = 0; i < *cnt; i++) {
+    for (int i = 0; i < cnt; i++) {
         fscanf(f, "%d.%d.%d\n", &ds[i].d, &ds[i].m, &ds[i].y);
     }
     fclose(f);
-    return ds;
 }
 
-long long* read_concat(const char *fn, int *cnt) {
+// Чтение дат в числа ггггммдд
+void read_concat(const char *fn, long long *ds, int cnt) {
     FILE *f = fopen(fn, "r");
-    if (!f) return NULL;
+    if (!f) return;
 
-    *cnt = 0;
-    char buf[20];
-    while (fgets(buf, sizeof(buf), f)) (*cnt)++;
-    rewind(f);
-
-    long long *ds = malloc(*cnt * sizeof(long long));
-    for (int i = 0; i < *cnt; i++) {
+    for (int i = 0; i < cnt; i++) {
         int d, m, y;
         fscanf(f, "%d.%d.%d\n", &d, &m, &y);
         ds[i] = to_concat(d, m, y);
     }
     fclose(f);
-    return ds;
 }
 
-long long* read_days(const char *fn, int *cnt) {
+// Чтение дат в количество дней
+void read_days(const char *fn, long long *ds, int cnt) {
     FILE *f = fopen(fn, "r");
-    if (!f) return NULL;
+    if (!f) return;
 
-    *cnt = 0;
-    char buf[20];
-    while (fgets(buf, sizeof(buf), f)) (*cnt)++;
-    rewind(f);
-
-    long long *ds = malloc(*cnt * sizeof(long long));
-    for (int i = 0; i < *cnt; i++) {
+    for (int i = 0; i < cnt; i++) {
         int d, m, y;
         fscanf(f, "%d.%d.%d\n", &d, &m, &y);
         ds[i] = to_days(d, m, y);
     }
     fclose(f);
-    return ds;
 }
 
+// Функции сравнения
 int cmp_struct(const void *a, const void *b) {
     const Date *d1 = (const Date*)a;
     const Date *d2 = (const Date*)b;
@@ -142,21 +136,12 @@ int cmp_days(const void *a, const void *b) {
     return 0;
 }
 
+// Алгоритмы сортировки для структур
 void bubble_s(Date a[], int n) {
     for (int i = 0; i < n-1; i++)
         for (int j = 0; j < n-i-1; j++)
             if (cmp_struct(&a[j], &a[j+1]) > 0) {
                 Date t = a[j];
-                a[j] = a[j+1];
-                a[j+1] = t;
-            }
-}
-
-void bubble_l(long long a[], int n, int (*cmp)(const void*, const void*)) {
-    for (int i = 0; i < n-1; i++)
-        for (int j = 0; j < n-i-1; j++)
-            if (cmp(&a[j], &a[j+1]) > 0) {
-                long long t = a[j];
                 a[j] = a[j+1];
                 a[j+1] = t;
             }
@@ -168,17 +153,6 @@ void select_s(Date a[], int n) {
         for (int j = i+1; j < n; j++)
             if (cmp_struct(&a[j], &a[mi]) < 0) mi = j;
         Date t = a[i];
-        a[i] = a[mi];
-        a[mi] = t;
-    }
-}
-
-void select_l(long long a[], int n, int (*cmp)(const void*, const void*)) {
-    for (int i = 0; i < n-1; i++) {
-        int mi = i;
-        for (int j = i+1; j < n; j++)
-            if (cmp(&a[j], &a[mi]) < 0) mi = j;
-        long long t = a[i];
         a[i] = a[mi];
         a[mi] = t;
     }
@@ -207,6 +181,28 @@ void quick_s(Date a[], int l, int h) {
 
 void quick_s_wrap(Date a[], int n) {
     quick_s(a, 0, n-1);
+}
+
+// Алгоритмы сортировки для long long с пользовательской функцией сравнения
+void bubble_l(long long a[], int n, int (*cmp)(const void*, const void*)) {
+    for (int i = 0; i < n-1; i++)
+        for (int j = 0; j < n-i-1; j++)
+            if (cmp(&a[j], &a[j+1]) > 0) {
+                long long t = a[j];
+                a[j] = a[j+1];
+                a[j+1] = t;
+            }
+}
+
+void select_l(long long a[], int n, int (*cmp)(const void*, const void*)) {
+    for (int i = 0; i < n-1; i++) {
+        int mi = i;
+        for (int j = i+1; j < n; j++)
+            if (cmp(&a[j], &a[mi]) < 0) mi = j;
+        long long t = a[i];
+        a[i] = a[mi];
+        a[mi] = t;
+    }
 }
 
 void quick_l(long long a[], int l, int h, int (*cmp)(const void*, const void*)) {
@@ -238,6 +234,15 @@ void quick_d_wrap(long long a[], int n) {
     quick_l(a, 0, n-1, cmp_days);
 }
 
+// Функции-обертки для измерения времени
+void bubble_s_wrap(Date *d, int n) { bubble_s(d, n); }
+void bubble_c_wrap(long long *d, int n) { bubble_l(d, n, cmp_concat); }
+void bubble_d_wrap(long long *d, int n) { bubble_l(d, n, cmp_days); }
+void select_s_wrap(Date *d, int n) { select_s(d, n); }
+void select_c_wrap(long long *d, int n) { select_l(d, n, cmp_concat); }
+void select_d_wrap(long long *d, int n) { select_l(d, n, cmp_days); }
+
+// Измерение времени выполнения
 double measure_time(void (*f)(void*, int), void *d, int n) {
     clock_t s = clock();
     f(d, n);
@@ -245,93 +250,122 @@ double measure_time(void (*f)(void*, int), void *d, int n) {
     return ((double)(e - s)) / CLOCKS_PER_SEC;
 }
 
-void bubble_s_wrap(void *d, int n) { bubble_s((Date*)d, n); }
-void bubble_c_wrap(void *d, int n) { bubble_l((long long*)d, n, cmp_concat); }
-void bubble_d_wrap(void *d, int n) { bubble_l((long long*)d, n, cmp_days); }
-void select_s_wrap(void *d, int n) { select_s((Date*)d, n); }
-void select_c_wrap(void *d, int n) { select_l((long long*)d, n, cmp_concat); }
-void select_d_wrap(void *d, int n) { select_l((long long*)d, n, cmp_days); }
-
+// Запись отсортированных данных в файл
 void write_file(const char *fn, Date *ds, int n) {
     FILE *f = fopen(fn, "w");
     if (!f) return;
-    for (int i = 0; i < n; i++) fprintf(f, "%d.%d.%d\n", ds[i].d, ds[i].m, ds[i].y);
+    for (int i = 0; i < n; i++) {
+        fprintf(f, "%d.%d.%d\n", ds[i].d, ds[i].m, ds[i].y);
+    }
     fclose(f);
 }
 
+// Проверка отсортированности
 bool sorted(Date *ds, int n) {
     for (int i = 0; i < n-1; i++)
         if (cmp_struct(&ds[i], &ds[i+1]) > 0) return false;
     return true;
 }
 
+// Подсчет количества строк в файле
+int count_lines(const char *fn) {
+    FILE *f = fopen(fn, "r");
+    if (!f) return 0;
+
+    int cnt = 0;
+    char buf[20];
+    while (fgets(buf, sizeof(buf), f)) cnt++;
+    fclose(f);
+    return cnt;
+}
+
 int main() {
     SetConsoleOutputCP(65001);
     SetConsoleCP(65001);
 
+
     const char *in = "dates.txt";
     const char *out = "sorted.txt";
-    int n = 5000;
+    int n = 10000; // Количество дат для генерации
 
-    printf("=== Генерация и сортировка дат ===\n");
     gen_file(in, n);
 
-    int cnt;
+    int cnt = count_lines(in);
 
-    printf("\n=== Сравнение производительности ===\n");
+    // Выделение памяти для всех представлений
+    Date *ds = malloc(cnt * sizeof(Date));
+    long long *dc = malloc(cnt * sizeof(long long));
+    long long *dd = malloc(cnt * sizeof(long long));
 
-    printf("\n--- Struct ---\n");
-    Date *ds = read_struct(in, &cnt);
-    Date *d1 = malloc(cnt * sizeof(Date));
-    Date *d2 = malloc(cnt * sizeof(Date));
-    memcpy(d1, ds, cnt * sizeof(Date));
-    memcpy(d2, ds, cnt * sizeof(Date));
+    // Копии для сортировки
+    Date *ds_copy1 = malloc(cnt * sizeof(Date));
+    Date *ds_copy2 = malloc(cnt * sizeof(Date));
+    long long *dc_copy1 = malloc(cnt * sizeof(long long));
+    long long *dc_copy2 = malloc(cnt * sizeof(long long));
+    long long *dd_copy1 = malloc(cnt * sizeof(long long));
+    long long *dd_copy2 = malloc(cnt * sizeof(long long));
 
-    double t1 = measure_time(bubble_s_wrap, ds, cnt);
-    double t2 = measure_time(select_s_wrap, d1, cnt);
-    double t3 = measure_time((void(*)(void*,int))quick_s_wrap, d2, cnt);
+    // Чтение данных
+    read_struct(in, ds, cnt);
+    read_concat(in, dc, cnt);
+    read_days(in, dd, cnt);
 
-    printf("Bubble: %.6f\n", t1);
-    printf("Select: %.6f\n", t2);
-    printf("Quick:  %.6f\n", t3);
-    printf("Sorted: %s\n", sorted(ds, cnt) ? "yes" : "no");
+    // Создание копий
+    memcpy(ds_copy1, ds, cnt * sizeof(Date));
+    memcpy(ds_copy2, ds, cnt * sizeof(Date));
+    memcpy(dc_copy1, dc, cnt * sizeof(long long));
+    memcpy(dc_copy2, dc, cnt * sizeof(long long));
+    memcpy(dd_copy1, dd, cnt * sizeof(long long));
+    memcpy(dd_copy2, dd, cnt * sizeof(long long));
 
-    printf("\n--- Concat ---\n");
-    long long *dc = read_concat(in, &cnt);
-    long long *c1 = malloc(cnt * sizeof(long long));
-    long long *c2 = malloc(cnt * sizeof(long long));
-    memcpy(c1, dc, cnt * sizeof(long long));
-    memcpy(c2, dc, cnt * sizeof(long long));
+    printf("\nСРАВНЕНИЕ ПРОИЗВОДИТЕЛЬНОСТИ\n");
 
-    t1 = measure_time(bubble_c_wrap, dc, cnt);
-    t2 = measure_time(select_c_wrap, c1, cnt);
-    t3 = measure_time((void(*)(void*,int))quick_c_wrap, c2, cnt);
+    // Тестирование структур
+    printf("\n Структуры (год, месяц, день)\n");
+    double t_bubble_s = measure_time((void(*)(void*,int))bubble_s_wrap, ds, cnt);
+    double t_select_s = measure_time((void(*)(void*,int))select_s_wrap, ds_copy1, cnt);
+    double t_quick_s = measure_time((void(*)(void*,int))quick_s_wrap, ds_copy2, cnt);
 
-    printf("Bubble: %.6f\n", t1);
-    printf("Select: %.6f\n", t2);
-    printf("Quick:  %.6f\n", t3);
+    printf("Пузырьковая: %.6f сек\n", t_bubble_s);
+    printf("Выбором:     %.6f сек\n", t_select_s);
+    printf("Быстрая:     %.6f сек\n", t_quick_s);
+    printf("Отсортировано: %s\n", sorted(ds, cnt) ? "да" : "нет");
 
-    printf("\n--- Days ---\n");
-    long long *dd = read_days(in, &cnt);
-    long long *dd1 = malloc(cnt * sizeof(long long));
-    long long *dd2 = malloc(cnt * sizeof(long long));
-    memcpy(dd1, dd, cnt * sizeof(long long));
-    memcpy(dd2, dd, cnt * sizeof(long long));
+    // Тестирование чисел ггггммдд
+    printf("\n Числа (ггггммдд) \n");
+    double t_bubble_c = measure_time((void(*)(void*,int))bubble_c_wrap, dc, cnt);
+    double t_select_c = measure_time((void(*)(void*,int))select_c_wrap, dc_copy1, cnt);
+    double t_quick_c = measure_time((void(*)(void*,int))quick_c_wrap, dc_copy2, cnt);
 
-    t1 = measure_time(bubble_d_wrap, dd, cnt);
-    t2 = measure_time(select_d_wrap, dd1, cnt);
-    t3 = measure_time((void(*)(void*,int))quick_d_wrap, dd2, cnt);
+    printf("Пузырьковая: %.6f сек\n", t_bubble_c);
+    printf("Выбором:     %.6f сек\n", t_select_c);
+    printf("Быстрая:     %.6f сек\n", t_quick_c);
 
-    printf("Bubble: %.6f\n", t1);
-    printf("Select: %.6f\n", t2);
-    printf("Quick:  %.6f\n", t3);
+    // Тестирование количества дней
+    printf("\n Количество дней от 1.1.1\n");
+    double t_bubble_d = measure_time((void(*)(void*,int))bubble_d_wrap, dd, cnt);
+    double t_select_d = measure_time((void(*)(void*,int))select_d_wrap, dd_copy1, cnt);
+    double t_quick_d = measure_time((void(*)(void*,int))quick_d_wrap, dd_copy2, cnt);
 
+    printf("Пузырьковая: %.6f сек\n", t_bubble_d);
+    printf("Выбором:     %.6f сек\n", t_select_d);
+    printf("Быстрая:     %.6f сек\n", t_quick_d);
+
+    // Вывод таблицы эффективности
+    printf("\n    Таблица эффективности n");
+    printf("Представление\\Алгоритм | Пузырьковая | Выбором     | Быстрая\n");
+    printf("-----------------------|-------------|-------------|-------------\n");
+    printf("Структуры              | %-11.6f | %-11.6f | %-11.6f\n", t_bubble_s, t_select_s, t_quick_s);
+    printf("Числа ггггммдд         | %-11.6f | %-11.6f | %-11.6f\n", t_bubble_c, t_select_c, t_quick_c);
+    printf("Количество дней        | %-11.6f | %-11.6f | %-11.6f\n", t_bubble_d, t_select_d, t_quick_d);
+
+    // Запись отсортированных данных
     write_file(out, ds, cnt);
-    printf("\nОтсортированные данные записаны в %s\n", out);
 
-    free(ds); free(d1); free(d2);
-    free(dc); free(c1); free(c2);
-    free(dd); free(dd1); free(dd2);
+    // Освобождение памяти
+    free(ds); free(ds_copy1); free(ds_copy2);
+    free(dc); free(dc_copy1); free(dc_copy2);
+    free(dd); free(dd_copy1); free(dd_copy2);
 
     return 0;
 }
