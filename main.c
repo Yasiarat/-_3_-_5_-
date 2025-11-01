@@ -260,13 +260,6 @@ void write_file(const char *fn, Date *ds, int n) {
     fclose(f);
 }
 
-// Проверка отсортированности
-bool sorted(Date *ds, int n) {
-    for (int i = 0; i < n-1; i++)
-        if (cmp_struct(&ds[i], &ds[i+1]) > 0) return false;
-    return true;
-}
-
 // Подсчет количества строк в файле
 int count_lines(const char *fn) {
     FILE *f = fopen(fn, "r");
@@ -318,7 +311,7 @@ int main() {
     memcpy(dd_copy1, dd, cnt * sizeof(long long));
     memcpy(dd_copy2, dd, cnt * sizeof(long long));
 
-    printf("\nСРАВНЕНИЕ ПРОИЗВОДИТЕЛЬНОСТИ\n");
+    printf("СРАВНЕНИЕ ПРОИЗВОДИТЕЛЬНОСТИ\n");
 
     // Тестирование структур
     printf("\n Структуры (год, месяц, день)\n");
@@ -329,7 +322,6 @@ int main() {
     printf("Пузырьковая: %.6f сек\n", t_bubble_s);
     printf("Выбором:     %.6f сек\n", t_select_s);
     printf("Быстрая:     %.6f сек\n", t_quick_s);
-    printf("Отсортировано: %s\n", sorted(ds, cnt) ? "да" : "нет");
 
     // Тестирование чисел ггггммдд
     printf("\n Числа (ггггммдд) \n");
@@ -352,7 +344,7 @@ int main() {
     printf("Быстрая:     %.6f сек\n", t_quick_d);
 
     // Вывод таблицы эффективности
-    printf("\n    Таблица эффективности n");
+    printf("\n    Таблица эффективности \n");
     printf("Представление\\Алгоритм | Пузырьковая | Выбором     | Быстрая\n");
     printf("-----------------------|-------------|-------------|-------------\n");
     printf("Структуры              | %-11.6f | %-11.6f | %-11.6f\n", t_bubble_s, t_select_s, t_quick_s);
